@@ -429,72 +429,235 @@ function getLevelText(level) {
     return levelTexts[level] || '未知';
 }
 
-// 生成训练建议
+// 生成训练建议 - 基于弱项分析结果
 function generateTrainingSuggestions(swimTime, bikeTime, runTime) {
-    const times = [
-        { sport: '游泳', time: swimTime, pace: convertToDecimalMinutes(
-            parseFloat(document.getElementById('swim-minutes').value),
-            parseFloat(document.getElementById('swim-seconds').value)
-        ) },
-        { sport: '骑车', time: bikeTime, pace: parseFloat(document.getElementById('bike-pace').value) },
-        { sport: '跑步', time: runTime, pace: convertToDecimalMinutes(
-            parseFloat(document.getElementById('run-minutes').value),
-            parseFloat(document.getElementById('run-seconds').value)
-        ) }
-    ];
+    // 获取配速数据
+    const swimPace = convertToDecimalMinutes(
+        parseFloat(document.getElementById('swim-minutes').value),
+        parseFloat(document.getElementById('swim-seconds').value)
+    );
+    const bikePace = parseFloat(document.getElementById('bike-pace').value);
+    const runPace = convertToDecimalMinutes(
+        parseFloat(document.getElementById('run-minutes').value),
+        parseFloat(document.getElementById('run-seconds').value)
+    );
     
-    times.sort((a, b) => b.time - a.time);
-    const weakestSport = times[0];
-    
-    const suggestions = {
-        '游泳': [
-            '技术训练：每周2-3次游泳技术练习，重点改善划水效率',
-            '耐力训练：增加连续游泳距离，从1000m逐步提升到2000m',
-            '速度训练：进行间歇训练，如8x100m高强度游泳',
-            '开放水域：每月至少2次开放水域训练，适应比赛环境'
-        ],
-        '骑车': [
-            '力量训练：每周2次骑行台训练，提升腿部力量',
-            '耐力骑行：周末进行长距离骑行，逐步增加里程',
-            '爬坡训练：选择有坡度的路线，提升爬坡能力',
-            '技术提升：练习换挡时机和转弯技巧'
-        ],
-        '跑步': [
-            '间歇训练：每周1-2次间歇跑，提升速度和耐力',
-            '长距离跑：周末进行LSD训练，增强有氧基础',
-            '力量训练：加强核心和下肢力量训练',
-            '恢复训练：重视拉伸和放松，预防伤病'
-        ]
+    // 定义配速等级标准
+    const paceStandards = {
+        '游泳': {
+            excellent: 1.5,
+            good: 2.0,
+            average: 2.5,
+            poor: 3.0
+        },
+        '骑车': {
+            excellent: 35,
+            good: 30,
+            average: 25,
+            poor: 20
+        },
+        '跑步': {
+            excellent: 4.0,
+            good: 5.0,
+            average: 6.0,
+            poor: 7.0
+        }
     };
     
+    // 评估每个项目的水平
+    const evaluations = [
+        {
+            sport: '游泳',
+            time: swimTime,
+            pace: swimPace,
+            level: getPaceLevel('游泳', swimPace, paceStandards),
+            icon: '🏊'
+        },
+        {
+            sport: '骑车',
+            time: bikeTime,
+            pace: bikePace,
+            level: getPaceLevel('骑车', bikePace, paceStandards),
+            icon: '🚴'
+        },
+        {
+            sport: '跑步',
+            time: runTime,
+            pace: runPace,
+            level: getPaceLevel('跑步', runPace, paceStandards),
+            icon: '🏃'
+        }
+    ];
+    
+    // 按水平排序，最差的排在前面
+    const levelOrder = { 'poor': 0, 'average': 1, 'good': 2, 'excellent': 3 };
+    evaluations.sort((a, b) => levelOrder[a.level] - levelOrder[b.level]);
+    
+    const weakestSport = evaluations[0];
+    const secondWeakSport = evaluations[1];
+    const strongestSport = evaluations[2];
+    
+    // 根据弱项等级生成针对性建议
+    const getSpecificSuggestions = (sport, level, pace) => {
+        const suggestions = {
+            '游泳': {
+                'poor': [
+                    '基础技术：从蛙泳或自由泳基础动作开始，每周3次技术练习',
+                    '水中适应：每次训练前做10分钟水中行走和漂浮练习',
+                    '呼吸训练：练习双侧呼吸，每3次划水换一次气',
+                    '短距离间歇：8×25m，休息30秒，专注技术动作'
+                ],
+                'average': [
+                    '技术精进：练习高肘划水和身体滚动，每周2次技术课',
+                    '耐力提升：从200m连续游逐步增加到500m',
+                    '速度训练：6×50m间歇，配速控制在2分/100m以内',
+                    '开放水域：每月1次户外游泳，适应真实环境'
+                ],
+                'good': [
+                    '速度突破：练习冲刺训练，6×100m高强度间歇',
+                    '技术优化：改善入水角度和划水效率',
+                    '耐力强化：长距离游泳，目标1000m连续',
+                    '比赛模拟：练习集体出发和转弯技术'
+                ],
+                'excellent': [
+                    '精英训练：专业游泳训练计划，提升竞技水平',
+                    '力量训练：增加上肢和核心力量',
+                    '战术训练：比赛策略和配速控制',
+                    '恢复训练：重视拉伸和按摩，预防过度训练'
+                ]
+            },
+            '骑车': {
+                'poor': [
+                    '基础骑行：每周2次平地骑行，每次30-45分钟',
+                    '车辆调试：学会调整座椅高度和车把位置',
+                    '换挡练习：熟练掌握前后变速器使用',
+                    '安全训练：学习基本骑行手势和安全规则'
+                ],
+                'average': [
+                    '耐力骑行：周末60-90分钟长距离骑行',
+                    '爬坡训练：寻找小坡度路段练习爬坡',
+                    '踏频训练：保持80-90rpm的踏频',
+                    '力量训练：骑行台训练，提升腿部力量'
+                ],
+                'good': [
+                    '速度训练：间歇骑行，提升平均速度到30km/h',
+                    '爬坡强化：挑战更长更陡的坡道',
+                    '技术提升：练习下坡和转弯技巧',
+                    '装备优化：考虑升级车辆和配件'
+                ],
+                'excellent': [
+                    '竞技训练：参加业余比赛，积累比赛经验',
+                    '功率训练：使用功率计进行科学训练',
+                    '战术训练：学习集团骑行和突围技巧',
+                    '体能维护：平衡训练和恢复，保持状态'
+                ]
+            },
+            '跑步': {
+                'poor': [
+                    '慢跑起步：从快走开始，逐步过渡到慢跑',
+                    '跑姿纠正：学习正确跑步姿势，避免受伤',
+                    '循序渐进：每周增加10%跑量，避免过度训练',
+                    '装备选择：选择合适的跑鞋和运动服装'
+                ],
+                'average': [
+                    '有氧基础：每周3次30-45分钟慢跑',
+                    '间歇训练：开始尝试400m间歇跑',
+                    '核心训练：加强腹部和下肢力量',
+                    '拉伸放松：每次跑后充分拉伸'
+                ],
+                'good': [
+                    '速度提升：5×1km间歇，配速控制在5分/km',
+                    '长跑训练：周末10-15km长距离跑',
+                    '坡道训练：找坡道练习上下坡跑',
+                    '配速控制：学会在不同距离控制配速'
+                ],
+                'excellent': [
+                    '马拉松训练：准备半马或全马比赛',
+                    '高强度间歇：800m或1000m重复跑',
+                    '体能监控：使用心率带监控训练强度',
+                    '营养补给：学习比赛中的补给策略'
+                ]
+            }
+        };
+        
+        return suggestions[sport][level] || suggestions[sport]['average'];
+    };
+    
+    // 生成训练建议HTML
+    const generateSuggestionHTML = (sport, suggestions) => {
+        return `
+            <div class="bg-slate-700 rounded-lg p-3 mb-3">
+                <div class="text-orange-400 font-bold mb-2">${sport}专项训练</div>
+                ${suggestions.map(suggestion => `
+                    <div class="text-white text-sm mb-2">• ${suggestion}</div>
+                `).join('')}
+            </div>
+        `;
+    };
+    
+    // 生成训练计划
+    const generateTrainingPlan = (weakestSport) => {
+        const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+        const activities = {
+            '游泳': ['轻松游泳', '游泳专项训练', '其他两项训练', '游泳强度训练', '交叉训练', '长距离游泳', '恢复训练'],
+            '骑车': ['休息或骑行', '骑车专项训练', '其他两项训练', '骑行强度训练', '交叉训练', '长距离骑行', '恢复训练'],
+            '跑步': ['休息或慢跑', '跑步专项训练', '其他两项训练', '跑步强度训练', '交叉训练', '长距离跑步', '恢复训练']
+        };
+        
+        return days.map((day, index) => {
+            let activity = activities[weakestSport][index];
+            if (index === 1 || index === 3) {
+                activity = `${weakestSport}专项训练`;
+            }
+            return `<div>• ${day}：${activity}</div>`;
+        }).join('');
+    };
+    
+    // 构建训练建议HTML
     const suggestionHtml = `
         <div class="space-y-4">
             <div class="training-tip rounded-lg p-4">
-                <div class="text-orange-400 font-bold mb-2">重点训练项目：${weakestSport.sport}</div>
+                <div class="text-orange-400 font-bold mb-2">🎯 重点训练项目：${weakestSport.sport}</div>
                 <div class="text-gray-300 text-sm mb-3">
-                    您的${weakestSport.sport}配速为 ${weakestSport.pace}，建议优先提升此项能力
+                    您的${weakestSport.sport}配速为 ${formatPaceDisplay(weakestSport.sport, weakestSport.pace)}，
+                    水平为${getLevelText(weakestSport.level)}，建议优先提升此项能力
                 </div>
             </div>
             
             <div class="space-y-3">
-                <h4 class="text-white font-bold">具体训练建议：</h4>
-                ${suggestions[weakestSport.sport].map(suggestion => `
-                    <div class="bg-slate-700 rounded-lg p-3">
-                        <div class="text-white text-sm">${suggestion}</div>
+                <h4 class="text-white font-bold">📋 具体训练建议：</h4>
+                ${generateSuggestionHTML(weakestSport.sport, getSpecificSuggestions(weakestSport.sport, weakestSport.level, weakestSport.pace))}
+                
+                ${weakestSport.level !== 'excellent' ? `
+                    <div class="bg-blue-800 rounded-lg p-3">
+                        <div class="text-blue-200 font-bold mb-2">💡 ${secondWeakSport.sport}提升建议</div>
+                        <div class="text-blue-100 text-sm">
+                            ${getSpecificSuggestions(secondWeakSport.sport, secondWeakSport.level, secondWeakSport.pace).slice(0, 2).map(s => `• ${s}`).join('<br>')}
+                        </div>
                     </div>
-                `).join('')}
+                ` : ''}
+                
+                <div class="bg-green-800 rounded-lg p-3">
+                    <div class="text-green-200 font-bold mb-2">✅ ${strongestSport.sport}保持建议</div>
+                    <div class="text-green-100 text-sm">
+                        ${getSpecificSuggestions(strongestSport.sport, strongestSport.level, strongestSport.pace).slice(0, 2).map(s => `• ${s}`).join('<br>')}
+                    </div>
+                </div>
             </div>
             
             <div class="bg-blue-900 rounded-lg p-4 mt-4">
-                <div class="text-white font-bold mb-2">每周训练计划</div>
+                <div class="text-white font-bold mb-2">📅 每周训练计划</div>
                 <div class="text-gray-300 text-sm space-y-1">
-                    <div>• 周一：休息或轻松游泳</div>
-                    <div>• 周二：${weakestSport.sport}专项训练</div>
-                    <div>• 周三：其他两项训练</div>
-                    <div>• 周四：${weakestSport.sport}强度训练</div>
-                    <div>• 周五：交叉训练</div>
-                    <div>• 周六：长距离训练</div>
-                    <div>• 周日：恢复训练</div>
+                    ${generateTrainingPlan(weakestSport.sport)}
+                </div>
+            </div>
+            
+            <div class="bg-purple-800 rounded-lg p-3 mt-4">
+                <div class="text-purple-200 font-bold mb-2">🎯 训练重点</div>
+                <div class="text-purple-100 text-sm">
+                    建议将70%的训练时间分配给${weakestSport.sport}，
+                    20%分配给${secondWeakSport.sport}，
+                    10%用于维持${strongestSport.sport}的状态
                 </div>
             </div>
         </div>
