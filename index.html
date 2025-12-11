@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>铁人三项时间估算器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://unpkg.com/matter-js@0.19.0/build/matter.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .sport-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .swim-icon { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+        .bike-icon { background: linear-gradient(135deg, #f97316, #fb923c); }
+        .run-icon { background: linear-gradient(135deg, #10b981, #34d399); }
+        
+        .distance-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .distance-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .distance-card.selected {
+            background: linear-gradient(135deg, #f97316, #fb923c);
+            transform: scale(1.02);
+        }
+        
+        .input-field {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #f97316;
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #f97316, #fb923c);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+        
+        .result-card {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(52, 211, 153, 0.1));
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .analysis-card {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.2), rgba(59, 130, 246, 0.1));
+            border: 1px solid rgba(30, 58, 138, 0.3);
+        }
+        
+        .floating-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .hero-section {
+            background: url('finish-hero.png') center/cover;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-overlay {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.6));
+        }
+        
+        .chart-container {
+            height: 280px;
+            margin: 20px 0;
+            position: relative;
+            opacity: 0;
+        }
+        
+        .chart-container.show {
+            opacity: 1;
+        }
+        
+        .training-tip {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(251, 146, 60, 0.05));
+            border-left: 4px solid #f97316;
+        }
+        
+        .weakness-badge {
+            background: linear-gradient(135deg, #ef4444, #f87171);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .strength-badge {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .time-display {
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #10b981;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .pace-unit {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        
+        .section-title {
+            color: #f97316;
+            font-weight: bold;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        
+        @media (max-width: 640px) {
+            .time-display {
+                font-size: 1.5rem;
+            }
+            
+            .sport-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 动态粒子背景 -->
+    <div class="floating-particles" id="particles"></div>
+    
+    <!-- 主容器 -->
+    <div class="min-h-screen pb-20">
+        <!-- 应用标题区域 -->
+        <div class="hero-section h-32 relative">
+            <div class="hero-overlay h-full flex items-center justify-center">
+                <div class="text-center text-white">
+                    <h1 class="text-2xl font-bold mb-2">铁人三项时间估算器</h1>
+                    <p class="text-sm opacity-80">专业配速分析与训练建议</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 比赛距离选择 -->
+        <div class="px-4 py-6">
+            <h2 class="section-title">选择比赛距离</h2>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="distance-card glass-card rounded-lg p-4 text-center text-white" data-distance="sprint">
+                    <div class="text-sm font-bold">半程标铁</div>
+                    <div class="text-xs opacity-70 mt-1">750m + 20km + 5km</div>
+                </div>
+                <div class="distance-card glass-card rounded-lg p-4 text-center text-white" data-distance="olympic">
+                    <div class="text-sm font-bold">标铁</div>
+                    <div class="text-xs opacity-70 mt-1">1500m + 40km + 10km</div>
+                </div>
+                <div class="distance-card glass-card rounded-lg p-4 text-center text-white" data-distance="half-iron">
+                    <div class="text-sm font-bold">半程大铁</div>
+                    <div class="text-xs opacity-70 mt-1">1900m + 90km + 21.1km</div>
+                </div>
+                <div class="distance-card glass-card rounded-lg p-4 text-center text-white" data-distance="iron">
+                    <div class="text-sm font-bold">大铁</div>
+                    <div class="text-xs opacity-70 mt-1">3800m + 180km + 42.2km</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 配速输入区域 -->
+        <div class="px-4 py-6">
+            <h2 class="section-title">输入您的配速</h2>
+            
+            <!-- 游泳配速 -->
+            <div class="glass-card rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-3">
+                    <div class="sport-icon swim-icon mr-3">🏊</div>
+                    <div>
+                        <div class="text-white font-bold">游泳配速</div>
+                        <div class="pace-unit">分:秒 / 100米</div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <input type="number" min="0" max="10" 
+                           class="input-field flex-1 rounded-lg px-4 py-3 text-lg" 
+                           placeholder="2" id="swim-minutes" value="2">
+                    <span class="text-white text-lg flex items-center">:</span>
+                    <input type="number" min="0" max="59" 
+                           class="input-field flex-1 rounded-lg px-4 py-3 text-lg" 
+                           placeholder="30" id="swim-seconds" value="0">
+                </div>
+            </div>
+            
+            <!-- 骑车配速 -->
+            <div class="glass-card rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-3">
+                    <div class="sport-icon bike-icon mr-3">🚴</div>
+                    <div>
+                        <div class="text-white font-bold">骑车配速</div>
+                        <div class="pace-unit">公里/小时</div>
+                    </div>
+                </div>
+                <input type="number" step="0.1" min="5" max="60" 
+                       class="input-field w-full rounded-lg px-4 py-3 text-lg" 
+                       placeholder="30.0" id="bike-pace" value="30.0">
+            </div>
+            
+            <!-- 跑步配速 -->
+            <div class="glass-card rounded-lg p-4 mb-4">
+                <div class="flex items-center mb-3">
+                    <div class="sport-icon run-icon mr-3">🏃</div>
+                    <div>
+                        <div class="text-white font-bold">跑步配速</div>
+                        <div class="pace-unit">分:秒 / 公里</div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <input type="number" min="0" max="15" 
+                           class="input-field flex-1 rounded-lg px-4 py-3 text-lg" 
+                           placeholder="5" id="run-minutes" value="5">
+                    <span class="text-white text-lg flex items-center">:</span>
+                    <input type="number" min="0" max="59" 
+                           class="input-field flex-1 rounded-lg px-4 py-3 text-lg" 
+                           placeholder="0" id="run-seconds" value="0">
+                </div>
+            </div>
+            
+            <!-- 计算按钮 -->
+            <button class="btn-primary w-full rounded-lg py-4 text-white font-bold text-lg mb-3" 
+                    onclick="calculateTime()">
+                计算完赛时间
+            </button>
+            
+            <!-- 测试按钮 -->
+            <button class="w-full rounded-lg py-2 border border-gray-600 text-gray-300 font-bold text-sm" 
+                    onclick="testFunction()">
+                测试功能
+            </button>
+        </div>
+        
+        <!-- 计算结果显示 -->
+        <div class="px-4 py-6" id="results-section" style="display: none;">
+            <h2 class="section-title">完赛时间预测</h2>
+            <div class="result-card rounded-lg p-6 mb-6">
+                <div class="text-center mb-4">
+                    <div class="text-white text-sm mb-2">预计总完赛时间</div>
+                    <div class="time-display" id="total-time">00:00:00</div>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <div class="text-white text-xs opacity-70">游泳</div>
+                        <div class="text-white font-bold" id="swim-time">00:00</div>
+                    </div>
+                    <div>
+                        <div class="text-white text-xs opacity-70">骑车</div>
+                        <div class="text-white font-bold" id="bike-time">00:00</div>
+                    </div>
+                    <div>
+                        <div class="text-white text-xs opacity-70">跑步</div>
+                        <div class="text-white font-bold" id="run-time">00:00</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 弱项分析 -->
+            <div class="analysis-card rounded-lg p-6 mb-6">
+                <h3 class="text-white font-bold mb-4">弱项分析</h3>
+                <div id="weakness-analysis">
+                    <!-- 动态生成分析内容 -->
+                </div>
+            </div>
+            
+            <!-- 数据可视化 -->
+            <div class="glass-card rounded-lg p-6 mb-6">
+                <h3 class="text-white font-bold mb-4">能力分析图表</h3>
+                <div class="chart-container" style="height: 280px; opacity: 0;">
+                    <div id="radar-chart" style="height: 100%; width: 100%;"></div>
+                </div>
+            </div>
+            
+            <div class="glass-card rounded-lg p-6 mb-6">
+                <h3 class="text-white font-bold mb-4">时间分配</h3>
+                <div class="chart-container" style="height: 280px; opacity: 0;">
+                    <div id="pie-chart" style="height: 100%; width: 100%;"></div>
+                </div>
+            </div>
+            
+            <!-- 训练建议 -->
+            <div class="glass-card rounded-lg p-6 mb-6">
+                <h3 class="text-white font-bold mb-4">个性化训练建议</h3>
+                <div id="training-suggestions">
+                    <!-- 动态生成训练建议 -->
+                </div>
+            </div>
+            
+            <!-- 重置按钮 -->
+            <button class="w-full rounded-lg py-3 border border-gray-600 text-gray-300 font-bold" 
+                    onclick="resetForm()">
+                重新计算
+            </button>
+        </div>
+    </div>
+    
+    <!-- 底部导航 -->
+    <div class="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-gray-700">
+        <div class="flex justify-around py-3">
+            <button class="flex flex-col items-center text-orange-400 text-xs" onclick="showHome()">
+                <div class="text-lg mb-1">🏠</div>
+                <span>首页</span>
+            </button>
+            <button class="flex flex-col items-center text-gray-400 text-xs" onclick="showAnalysis()">
+                <div class="text-lg mb-1">📊</div>
+                <span>分析</span>
+            </button>
+            <button class="flex flex-col items-center text-gray-400 text-xs" onclick="showTraining()">
+                <div class="text-lg mb-1">💪</div>
+                <span>训练</span>
+            </button>
+        </div>
+    </div>
+    
+    <script src="main.js"></script>
+</body>
+</html>

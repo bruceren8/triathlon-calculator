@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图表测试页面</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .chart { width: 100%; height: 300px; margin: 20px 0; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>图表功能测试</h1>
+    
+    <h2>雷达图测试</h2>
+    <div id="radar-test" class="chart"></div>
+    
+    <h2>饼图测试</h2>
+    <div id="pie-test" class="chart"></div>
+    
+    <script>
+        // 测试雷达图
+        const radarChart = echarts.init(document.getElementById('radar-test'));
+        const radarOption = {
+            title: { text: '能力雷达图', left: 'center' },
+            radar: {
+                indicator: [
+                    { name: '游泳', max: 100 },
+                    { name: '骑车', max: 100 },
+                    { name: '跑步', max: 100 }
+                ]
+            },
+            series: [{
+                type: 'radar',
+                data: [{ value: [80, 60, 70], name: '当前水平' }]
+            }]
+        };
+        radarChart.setOption(radarOption);
+        
+        // 测试饼图
+        const pieChart = echarts.init(document.getElementById('pie-test'));
+        const pieOption = {
+            title: { text: '时间分配', left: 'center' },
+            series: [{
+                type: 'pie',
+                radius: '50%',
+                data: [
+                    { value: 30, name: '游泳' },
+                    { value: 90, name: '骑车' },
+                    { value: 60, name: '跑步' }
+                ]
+            }]
+        };
+        pieChart.setOption(pieOption);
+        
+        // 响应式调整
+        window.addEventListener('resize', function() {
+            radarChart.resize();
+            pieChart.resize();
+        });
+    </script>
+</body>
+</html>
